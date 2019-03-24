@@ -1,0 +1,583 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AppStream infrastructure
+Parameters:
+  KeyPairName:
+    Description: The key pair can be created from the EC2 console
+      after it launches
+    Type: String
+    MinLength: '1'
+    MaxLength: '255'
+    AllowedPattern: "[-_ a-zA-Z0-9]*"
+    ConstraintDescription: Must be an existing, valid EC2 key pair.
+  ADInstanceType:
+    Description: Amazon EC2 instance type for the first Active Directory Instance
+    Type: String
+    Default: m3.xlarge
+    AllowedValues:
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - c1.medium
+    - c1.xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - hi1.4xlarge
+    ConstraintDescription: Must enter a valid instance type.
+  AD2InstanceType:
+    Description: Amazon EC2 instance type for the second Active Directory Instance
+    Type: String
+    Default: m3.xlarge
+    AllowedValues:
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - c1.medium
+    - c1.xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - hi1.4xlarge
+    ConstraintDescription: Must enter a valid instance type.
+  NATInstanceType:
+    Description: Amazon EC2 instance type for the NAT Instances
+    Type: String
+    Default: m1.small
+    AllowedValues:
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    - m1.small
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - c1.medium
+    - c1.xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - hi1.4xlarge
+    ConstraintDescription: Must enter a valid instance type.
+  RDGWInstanceType:
+    Description: Amazon EC2 instance type for the Remote Desktop Gatweway Instance
+    Type: String
+    Default: m3.xlarge
+    AllowedValues:
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - c1.medium
+    - c1.xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - hi1.4xlarge
+    ConstraintDescription: Must enter a valid instance type.
+  RDPSourceCIDR:
+    Description: Source CIDR Block to allow incoming RDP connections to the RDGW servers
+    Type: String
+    Default: '0.0.0.0/0'
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  DomainDNSName:
+    Description: Fully qualified domain name (FQDN) of the forest root domain e.g.
+      corp.com
+    Type: String
+    Default: corp.com
+    MinLength: '3'
+    MaxLength: '25'
+    AllowedPattern: "[a-zA-Z0-9]+\\..+"
+    ConstraintDescription: Must be valid DNS domain name.
+  DomainNetBIOSName:
+    Description: NetBIOS name of the domain (upto 15 characters) for users of earlier
+    Type: String
+    Default: corp
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: Must be valid NetBIOS domain name.
+  ADServerNetBIOSName1:
+    Description: NetBIOS name of the 1st AD Server (upto 15 characters)
+    Type: String
+    Default: DC01
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: Must be valid NetBIOS system name.
+  ADServerNetBIOSName2:
+    Description: NetBIOS name of the 2nd AD Server (upto 15 characters)
+    Type: String
+    Default: DC02
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: Must be valid NetBIOS system name.
+  RestoreModePassword:
+    Description: Password for a separate Administrator account when the domain controller
+      is in Restore Mode. Must be at least 8 characters containing letters, numbers
+      and symbols
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*"
+    NoEcho: 'True'
+    Default: Password123
+    ConstraintDescription: Must be at least 8 characters with letters, numbers and/or
+      symbols.
+  DomainAdminUser:
+    Description: User name for the account that will be added as Domain Administrator.
+      This is separate from the default "Administrator" account
+    Type: String
+    Default: dadmin
+    MinLength: '5'
+    MaxLength: '20'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Must be valid Active Directory username between 5-20 characters.
+  DomainAdminPassword:
+    Description: Password for the domain admin user. Must be at least 8 characters
+      containing letters, numbers and symbols
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*"
+    NoEcho: 'true'
+    Default: Password123
+    ConstraintDescription: Must be at least 8 characters with letters, numbers and/or
+      symbols.
+  UserCount:
+    Description: Total number of test user accounts to create in Active Directory
+    Type: Number
+    Default: '5'
+    MinValue: '1'
+    MaxValue: '1000'
+    ConstraintDescription: Must be a number between 1 and 1000.
+  DMZ1CIDR:
+    Description: CIDR Block for the Public DMZ Subnet located in AZ1
+    Type: String
+    Default: 192.168.0.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  DMZ2CIDR:
+    Description: CIDR Block for the Public DMZ Subnet located in AZ2
+    Type: String
+    Default: 192.168.16.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  PrivSub1CIDR:
+    Description: CIDR Block for Private Subnet 1 located in AZ1
+    Type: String
+    Default: 192.168.32.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  PrivSub2CIDR:
+    Description: CIDR Block for Private Subnet 2 located in AZ2
+    Type: String
+    Default: 192.168.48.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  PrivSub3CIDR:
+    Description: CIDR Block for Private Subnet 3 located in AZ1
+    Type: String
+    Default: 192.168.64.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  PrivSub4CIDR:
+    Description: CIDR Block for Private Subnet 4 located in AZ2
+    Type: String
+    Default: 192.168.80.0/20
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+
+  VPCCIDR:
+    Description: CIDR Block for the VPC
+    Type: String
+    Default: 192.168.0.0/16
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})?"
+    ConstraintDescription: Must be valid CIDR netblock in the form x.x.x.x/x.
+  AD1PrivateIp:
+    Description: Fixed private IP for the first Active Directory server located in
+      AZ1
+    Type: String
+    Default: 192.168.32.10
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})?"
+    ConstraintDescription: Must be valid IP address in the form x.x.x.x.
+  AD2PrivateIp:
+    Description: Fixed private IP for the second Active Directory serverr located
+      in AZ2
+    Type: String
+    Default: 192.168.48.10
+    AllowedPattern: "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})?"
+    ConstraintDescription: Must be valid IP address in the form x.x.x.x.
+  ADFSInstanceType:
+    Description: Amazon EC2 instance type for the ADFS Instances
+    Type: String
+    Default: m3.xlarge
+    AllowedValues:
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - g2.2xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - hs1.8xlarge
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - c1.medium
+    - c1.xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - hi1.4xlarge
+    ConstraintDescription: Must enter a valid instance type.
+  ADFSServerNetBIOSName1:
+    Description: NetBIOS name of the 1st ADFS Server (up to 15 characters)
+    Type: String
+    Default: ADFS01
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: Must be valid NetBIOS system name.
+  ADFSServerNetBIOSName2:
+    Description: NetBIOS name of the 2nd ADFS Server (up to 15 characters)
+    Type: String
+    Default: ADFS02
+    MinLength: '1'
+    MaxLength: '15'
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: Must be valid NetBIOS system name.
+  SAMLUser:
+    Description: User name for the SAML-federated user
+      Console
+    Type: String
+    Default: samltest
+    MinLength: '5'
+    MaxLength: '20'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Must be valid Active Directory username between 5-20 characters.
+  SAMLUserPassword:
+    Description: Password for a separate SAML Test User. Must be at least 8 characters
+      containing letters, numbers and symbols
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*"
+    NoEcho: 'True'
+    Default: Password123
+    ConstraintDescription: Must be at least 8 characters with letters, numbers and/or
+      symbols.
+  SSLPassword:
+    Description: Password for the self-signed SSL certificate. Must be at least 8
+      characters containing letters, numbers and symbols
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*"
+    NoEcho: 'True'
+    Default: Password123
+    ConstraintDescription: Must be at least 8 characters with letters, numbers and/or
+      symbols.
+  ADFSPassword:
+    Description: Password for the ADFS service account. Must be at least 8 characters
+      containing letters, numbers and symbols
+    Type: String
+    MinLength: '8'
+    MaxLength: '32'
+    AllowedPattern: "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*"
+    NoEcho: 'True'
+    Default: Password123
+    ConstraintDescription: Must be at least 8 characters with letters, numbers and/or
+      symbols.
+Resources:
+  Part1VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3-ap-southeast-2.amazonaws.com/appstreamadfsdemo/cloudformation/01_Network.yml
+      Parameters:
+        KeyPairName:
+          Ref: KeyPairName
+        NATInstanceType:
+          Ref: NATInstanceType
+        DMZ1CIDR:
+          Ref: DMZ1CIDR
+        DMZ2CIDR:
+          Ref: DMZ2CIDR
+        PrivSub1CIDR:
+          Ref: PrivSub1CIDR
+        PrivSub2CIDR:
+          Ref: PrivSub2CIDR
+        PrivSub3CIDR:
+          Ref: PrivSub3CIDR
+        PrivSub4CIDR:
+          Ref: PrivSub4CIDR
+        VPCCIDR:
+          Ref: VPCCIDR
+  Part2AD:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3-ap-southeast-2.amazonaws.com/appstreamadfsdemo/cloudformation/02_AD.yml
+      Parameters:
+        VPCID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.VPCID
+        PrivSub1ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.PrivSub1ID
+        PrivSub2ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.PrivSub2ID
+        KeyPairName:
+          Ref: KeyPairName
+        ADInstanceType:
+          Ref: ADInstanceType
+        AD2InstanceType:
+          Ref: AD2InstanceType
+        DomainDNSName:
+          Ref: DomainDNSName
+        DomainNetBIOSName:
+          Ref: DomainNetBIOSName
+        ADServerNetBIOSName1:
+          Ref: ADServerNetBIOSName1
+        ADServerNetBIOSName2:
+          Ref: ADServerNetBIOSName2
+        RestoreModePassword:
+          Ref: RestoreModePassword
+        DomainAdminUser:
+          Ref: DomainAdminUser
+        DomainAdminPassword:
+          Ref: DomainAdminPassword
+        UserCount:
+          Ref: UserCount
+        DMZ1CIDR:
+          Ref: DMZ1CIDR
+        DMZ2CIDR:
+          Ref: DMZ2CIDR
+        PrivSub1CIDR:
+          Ref: PrivSub1CIDR
+        PrivSub2CIDR:
+          Ref: PrivSub2CIDR
+        PrivSub3CIDR:
+          Ref: PrivSub3CIDR
+        PrivSub4CIDR:
+          Ref: PrivSub4CIDR
+        VPCCIDR:
+          Ref: VPCCIDR
+        AD1PrivateIp:
+          Ref: AD1PrivateIp
+        AD2PrivateIp:
+          Ref: AD2PrivateIp
+        SSLPassword:
+          Ref: SSLPassword
+  Part3ADFS:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3-ap-southeast-2.amazonaws.com/appstreamadfsdemo/cloudformation/03_ADFS.yml
+      Parameters:
+        VPCID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.VPCID
+        ADSub1ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.PrivSub1ID
+        ADSub2ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.PrivSub2ID
+        DomainMemberSGID:
+          Fn::GetAtt:
+          - Part2AD
+          - Outputs.DomainMemberSGID
+        CertBucketName:
+          Fn::GetAtt:
+          - Part2AD
+          - Outputs.CertBucketName
+        AD1PrivateIp:
+          Ref: AD1PrivateIp
+        AD2PrivateIp:
+          Ref: AD2PrivateIp
+        ADServerNetBIOSName1:
+          Ref: ADServerNetBIOSName1
+        KeyPairName:
+          Ref: KeyPairName
+        ADFSInstanceType:
+          Ref: ADFSInstanceType
+        DomainDNSName:
+          Ref: DomainDNSName
+        DomainNetBIOSName:
+          Ref: DomainNetBIOSName
+        ADFSServerNetBIOSName1:
+          Ref: ADFSServerNetBIOSName1
+        ADFSServerNetBIOSName2:
+          Ref: ADFSServerNetBIOSName2
+        DomainAdminUser:
+          Ref: DomainAdminUser
+        DomainAdminPassword:
+          Ref: DomainAdminPassword
+        SAMLUser:
+          Ref: SAMLUser
+        SAMLUserPassword:
+          Ref: SAMLUserPassword
+        SSLPassword:
+          Ref: SSLPassword
+        ADFSPassword:
+          Ref: ADFSPassword
+  Part4RDGW:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3-ap-southeast-2.amazonaws.com/appstreamadfsdemo/cloudformation/04_RDGW.yml
+      Parameters:
+        VPCID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.VPCID
+        DMZSub1ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.DMZSub1ID
+        DMZSub2ID:
+          Fn::GetAtt:
+          - Part1VPC
+          - Outputs.DMZSub2ID
+        DomainMemberSGID:
+          Fn::GetAtt:
+          - Part2AD
+          - Outputs.DomainMemberSGID
+        CertBucketName:
+          Fn::GetAtt:
+          - Part2AD
+          - Outputs.CertBucketName
+        KeyPairName:
+          Ref: KeyPairName
+        RDPSourceCIDR:
+          Ref: RDPSourceCIDR
+        DomainDNSName:
+          Ref: DomainDNSName
+        DomainNetBIOSName:
+          Ref: DomainNetBIOSName
+        DomainAdminUser:
+          Ref: DomainAdminUser
+        DomainAdminPassword:
+          Ref: DomainAdminPassword
+        AD1PrivateIp:
+          Ref: AD1PrivateIp
+        AD2PrivateIp:
+          Ref: AD2PrivateIp
+        RDGWInstanceType:
+          Ref: RDGWInstanceType
+        SSLPassword:
+          Ref: SSLPassword
+Outputs:
+  SSOPortalURL:
+    Value:
+      Fn::Join:
+      - ''
+      - - https://sso.
+        - Ref: DomainDNSName
+        - "/adfs/ls/IdpInitiatedSignOn.aspx"
+    Description: URL for web single sign-on (Web SSO) to AWS
